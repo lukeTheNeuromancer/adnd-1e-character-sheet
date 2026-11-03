@@ -41,12 +41,19 @@
   .dice-row input { width:56px; text-align:center; }
   #rollLog { font-size:13px; background:#fffdf5; border:1px solid #c9b489; border-radius:6px; padding:8px 10px; max-height:180px; overflow:auto; white-space:pre-wrap; }
   .del { color:var(--bad); background:none; border:none; padding:2px 6px; }
+  .hero { border:2px solid #8b5a2b; background:#fff8e7; border-radius:8px; padding:14px 16px; margin:12px 0; }
+  .hero p { margin:0 0 10px; }
 </style>
 </head>
 <body>
 <div class="sheet">
   <h1>AD&amp;D 1e 角色卡</h1>
   <div class="subtitle">Advanced Dungeons &amp; Dragons 1st Edition · Character Sheet · 中英对照 · 非官方粉丝作品，与 Wizards of the Coast 无关<br>Unofficial fan project, not affiliated with Wizards of the Coast. 打开即空白卡，数据只存在你的浏览器 localStorage 里。</div>
+
+  <div class="hero">
+    <p><b>第一次建卡？不用先填表，点这里一步步来：</b>手动掷实体骰、把骰面填进向导，它会带你走完掷属性 → 种族职业 → 卓越力量 → HP → 起始金币 → 语言 → 武器 → 法术书 → 身份，全程不自动掷骰、不覆盖已有角色。</p>
+    <button id="btnWizardTop" class="primary" style="font-size:20px; padding:10px 22px">🧙 开始建卡向导 Start Creation Wizard</button>
+  </div>
 
   <h2>角色管理 Character</h2>
   <div class="row">
@@ -533,12 +540,14 @@ function applyWizard() {
   logRoll("向导完成：已写入 " + (d.name || "未命名角色") + " 的角色卡。");
 }
 function logRoll(text) { $("rollLog").textContent = new Date().toLocaleTimeString() + "  " + text + "\n" + $("rollLog").textContent; }
-$("btnWizard").onclick = () => {
+function openWizard() {
   gather();
   if (!isBlank(curChar())) { $("wizBg").classList.add("open"); wiz.data = null; $("wizTitle").textContent = "建卡向导 Creation Wizard"; $("wizStep").innerHTML = "<p>当前卡片已有数据。向导只开新卡，不覆盖现存角色：请先点「新建空白卡」，再开始向导。</p>"; $("wizBack").style.visibility = "hidden"; $("wizNext").textContent = "关闭 Close"; wiz.step = 99; return; }
   wiz.data = { ab: {}, race: "", cls: "", strEx: "", hp: "", gold: 0, languages: [], weapons: [], spells: [], name: "", player: "", align: "", sex: "", age: "" };
   wiz.step = 0; wizShow(); $("wizBg").classList.add("open");
-};
+}
+$("btnWizard").onclick = openWizard;
+$("btnWizardTop").onclick = openWizard;
 $("wizNext").onclick = () => { if (wiz.step === 99) { $("wizBg").classList.remove("open"); return; } wizNext(); };
 $("wizBack").onclick = () => { if (wiz.step !== 99) wizBack(); };
 $("wizClose").onclick = () => $("wizBg").classList.remove("open");
@@ -546,6 +555,8 @@ $("wizBg").addEventListener("click", ev => { if (ev.target === $("wizBg")) $("wi
 
 /* ---------- 启动 ---------- */
 refreshSelect(); fillForm(curChar());
+/* 第一次打开（浏览器里还没有存过角色）时，直接弹出建卡向导；已有存档的只看顶部大按钮，不打扰。 */
+try { if (!localStorage.getItem(LS_KEY)) { openWizard(); } } catch (e) {}
 </script>
 </body>
 </html>
