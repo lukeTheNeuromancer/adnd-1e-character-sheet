@@ -43,6 +43,15 @@
   .del { color:var(--bad); background:none; border:none; padding:2px 6px; }
   .hero { border:2px solid #8b5a2b; background:#fff8e7; border-radius:8px; padding:14px 16px; margin:12px 0; }
   .hero p { margin:0 0 10px; }
+
+/* 右侧肖像栏 */
+.id-wrap { display:flex; gap:16px; align-items:flex-start; }
+.id-wrap .grid { flex:1; }
+.portrait { width:200px; flex:none; border:2px solid var(--line); border-radius:8px; background:#fffdf5; padding:8px; text-align:center; margin:0; }
+.portrait img { width:100%; display:block; border-radius:4px; }
+.portrait figcaption { font-size:13px; color:#5a4632; margin-top:6px; }
+.portrait .ph { font-size:13px; color:#5a4632; padding:30px 6px; }
+@media (max-width:640px) { .id-wrap { flex-direction:column; } .portrait { width:100%; max-width:260px; } }
 </style>
 </head>
 <body>
@@ -69,6 +78,7 @@
   <div class="note" id="saveState"></div>
 
   <h2>基本信息 Identity</h2>
+  <div class="id-wrap">
   <div class="grid">
     <label>姓名 Name <input type="text" id="f_name" style="width:150px"></label>
     <label>玩家 Player <input type="text" id="f_player" style="width:120px"></label>
@@ -101,7 +111,9 @@
     <label>身高 Height <input type="text" id="f_height" style="width:80px"></label>
     <label>体重 Weight <input type="text" id="f_weight" style="width:80px"></label>
   </div>
-  <div class="note">建卡偏好：请手动掷实体骰，把骰面填进向导；本页不替你自动掷骰建人物。Roll physical dice yourself and enter each die face in the wizard.</div>
+  <figure class="portrait" id="portraitBox"><img id="portraitImg" src="" alt="角色肖像" style="display:none"><div class="ph" id="portraitPh">自动掷骰或选好种族职业后，这里会显示角色肖像。</div><figcaption id="portraitCap"></figcaption></figure>
+  </div>
+  <div class="note">建卡偏好：手动掷实体骰、把骰面填进向导是默认流程；赶时间也可以点🎲自动掷骰生成随机角色。Roll physical dice yourself and enter each die face in the wizard, or use 🎲 auto-roll for a random character.</div>
 
   <h2>属性 Abilities（3–18，超范围标红拦截）</h2>
   <table id="abilTable">
@@ -281,7 +293,7 @@ function fillForm(c) {
   $("a_dex").value = c.ab.dex; $("a_con").value = c.ab.con; $("a_cha").value = c.ab.cha;
   $("f_hp").value = c.hp; $("f_hpmax").value = c.hpmax; $("f_ac").value = c.ac; $("f_thac0").value = c.thac0;
   $("c_pp").value = c.coins.pp; $("c_gp").value = c.coins.gp; $("c_ep").value = c.coins.ep; $("c_sp").value = c.coins.sp; $("c_cp").value = c.coins.cp;
-  renderLists(); renderDerived();
+  renderLists(); renderDerived(); updatePortrait();
 }
 function refreshSelect() {
   const s = $("charSelect"); s.innerHTML = "";
@@ -578,6 +590,27 @@ function rInt(n) { return 1 + Math.floor(Math.random() * n); }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 function roll4d6drop() { const d = [rInt(6), rInt(6), rInt(6), rInt(6)]; d.sort((a, b) => a - b); return d[1] + d[2] + d[3]; }
+/* ---------- 角色肖像：种族+职业 → images/ 下的图；没有种族专属图时按职业兜底 ---------- */
+const PORTRAITS = {
+  "矮人 Dwarf": { fighter: "images/dwarf-fighter.webp", cleric: "images/dwarf-cleric.webp", thief: "images/dwarf-thief.webp" },
+  "精灵 Elf": { ranger: "images/elf-ranger.webp", fighter: "images/elf-fighter.webp", mu: "images/elf-magic-user.webp", druid: "images/elf-druid.webp", cleric: "images/elf-cleric.webp" },
+  "半兽人 Half-Orc": { fighter: "images/half-orc-fighter.webp", assassin: "images/half-orc-assassin.webp" },
+  "人类 Human": { paladin: "images/human-paladin.webp", fighter: "images/human-fighter.webp", mu: "images/human-magic-user.webp", cleric: "images/human-cleric.webp", thief: "images/human-thief.webp", assassin: "images/human-assassin.webp", ranger: "images/human-ranger.webp", bard: "images/human-bard.webp", monk: "images/human-monk.webp", illusionist: "images/human-illusionist.webp" }
+};
+const PORTRAIT_BY_CLASS = { fighter: "images/human-fighter.webp", cleric: "images/human-cleric.webp", thief: "images/human-thief.webp", mu: "images/human-magic-user.webp", illusionist: "images/human-illusionist.webp", paladin: "images/human-paladin.webp", ranger: "images/human-ranger.webp", assassin: "images/human-assassin.webp", monk: "images/human-monk.webp", druid: "images/elf-druid.webp", bard: "images/human-bard.webp" };
+function portraitFor(race, cls) {
+  if (race === "半精灵 Half-Elf") return (PORTRAITS["精灵 Elf"][cls] || PORTRAITS["人类 Human"][cls] || "");
+  const byRace = PORTRAITS[race];
+  if (byRace && byRace[cls]) return byRace[cls];
+  return PORTRAIT_BY_CLASS[cls] || "";
+}
+function updatePortrait() {
+  const race = $("f_race").value, cls = $("f_class").value;
+  const src = portraitFor(race, cls);
+  const img = $("portraitImg"), ph = $("portraitPh"), cap = $("portraitCap");
+  if (src) { img.src = src; img.style.display = "block"; ph.style.display = "none"; cap.textContent = (race || "") + " " + className(cls); }
+  else { img.style.display = "none"; ph.style.display = "block"; cap.textContent = ""; }
+}
 function autoGenerate() {
   const c = blankChar();
   c.race = pick(AUTO_RACES); c.cls = pick(AUTO_CLASSES); c.align = pick(AUTO_ALIGNS); c.level = 1; c.xp = 0;
@@ -603,6 +636,8 @@ function autoGenerate() {
   logRoll("🎲 已自动生成随机角色：" + c.race + " " + className(c.cls) + "（力量 " + c.ab.str + (c.ab.strEx ? "/" + c.ab.strEx : "") + "、智力 " + c.ab.int + "、感知 " + c.ab.wis + "、敏捷 " + c.ab.dex + "、体质 " + c.ab.con + "、魅力 " + c.ab.cha + "，HP " + c.hp + "，起始金 " + c.coins.gp + " gp）。姓名请自己填；种族职业组合未按 PHB 限制表过滤，以 DM 裁定为准。");
 }
 $("btnAutoGen").onclick = autoGenerate;
+$("f_race").onchange = updatePortrait;
+$("f_class").onchange = updatePortrait;
 $("btnAutoGenWiz").onclick = () => { $("wizBg").classList.remove("open"); autoGenerate(); };
 
 /* ---------- 启动 ---------- */
