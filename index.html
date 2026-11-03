@@ -438,7 +438,7 @@ function wizShow() {
     if (d.strEx) $("w_ex").value = d.strEx;
   } else if (w.step === 3) {
     const hd = T.hitDie[d.cls] || 6, conAdj = d.ab.con !== null && d.ab.con !== "" ? T.conHp(parseInt(d.ab.con), T.fighterGroup(d.cls)) : 0;
-    el.innerHTML = "<p>1 级生命骰 d" + hd + "：请填掷出的骰面，体质调整 " + fmt(conAdj) + " 会自动计入（最低 1 点）。</p><div class='dice-row'>" + dieInput("w_hp", hd) + "<span id='w_hp_show' class='mem'></span></div>";
+    el.innerHTML = "<p>1 级生命骰 d" + hd + "：请填掷出的骰面，体质调整 " + fmt(conAdj) + " 会自动计入（最低 1 点）。</p><div class='dice-row'>" + dieInput("w_hp0", hd) + "<span id='w_hp_show' class='mem'></span></div>";
   } else if (w.step === 4) {
     const spec = T.goldSpec[d.cls] || [3, 6, 10];
     let inputs = ""; for (let i = 0; i < spec[0]; i++) inputs += dieInput("w_g" + i, spec[1]);
@@ -494,7 +494,7 @@ function wizDice() {
 }
 function readDice(prefix, count, sides) {
   const faces = [];
-  for (let i = 0; i < count; i++) { const el = $(prefix + i); const v = numOrNull(el.value); if (v === null || v < 1 || v > sides) { el.classList.add("bad"); return null; } el.classList.remove("bad"); faces.push(v); }
+  for (let i = 0; i < count; i++) { const el = $(prefix + i); if (!el) return null; const v = numOrNull(el.value); if (v === null || v < 1 || v > sides) { el.classList.add("bad"); return null; } el.classList.remove("bad"); faces.push(v); }
   return faces;
 }
 function wizReadStep0() {
