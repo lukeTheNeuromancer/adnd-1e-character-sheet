@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AD&amp;D 1e 角色卡 Character Sheet</title>
+<style>
+  :root { --ink:#2b2118; --parch:#f7f0dc; --line:#8a6d3b; --soft:#efe4c8; --warn:#fdf3d7; --bad:#b3261e; }
+  * { box-sizing: border-box; }
+  body { font-family: Georgia, "Songti SC", "Noto Serif CJK SC", serif; background:#e8dfc8; color:var(--ink); margin:0; padding:20px; }
+  .sheet { max-width: 900px; margin:0 auto; background:var(--parch); border:2px solid var(--line); border-radius:8px; padding:26px 30px; box-shadow:0 2px 12px rgba(0,0,0,.25); }
+  h1 { text-align:center; font-size:30px; margin:0 0 4px; letter-spacing:1px; }
+  .subtitle { text-align:center; font-size:14px; color:#5a4632; margin-bottom:18px; }
+  h2 { font-size:18px; border-bottom:1px solid var(--line); padding-bottom:4px; margin:24px 0 10px; }
+  h3 { font-size:15px; margin:14px 0 6px; }
+  table { border-collapse:collapse; width:100%; margin:6px 0; }
+  th, td { border:1px solid #c9b489; padding:6px 8px; text-align:left; font-size:14px; }
+  th { background:var(--soft); }
+  input, select, textarea { font:inherit; font-size:14px; padding:4px 6px; border:1px solid #c9b489; border-radius:4px; background:#fffdf5; color:var(--ink); }
+  input[type=number] { width:74px; }
+  input[type=text] { width:100%; }
+  input.bad, select.bad { border-color:var(--bad); background:#fdeceb; outline:2px solid #f5b5b0; }
+  .grid { display:flex; flex-wrap:wrap; gap:8px 16px; font-size:14px; align-items:center; }
+  .grid label { display:flex; gap:6px; align-items:center; }
+  .note { font-size:13px; color:#5a4632; }
+  .warn { background:var(--warn); border:1px solid #d9b95c; border-radius:6px; padding:10px 12px; font-size:14px; margin-top:10px; }
+  .err { color:var(--bad); font-size:13px; }
+  button { font:inherit; font-size:14px; padding:6px 14px; border:1px solid var(--line); border-radius:6px; background:var(--soft); color:var(--ink); cursor:pointer; }
+  button:hover { background:#e5d3a8; }
+  button.primary { background:#8a6d3b; color:#fff; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0; }
+  .foot { text-align:center; font-size:12px; color:#7a6a55; margin-top:28px; border-top:1px solid #c9b489; padding-top:10px; }
+  .tag { display:inline-block; font-size:12px; border:1px solid var(--line); border-radius:10px; padding:1px 8px; margin-right:6px; }
+  .mem { color:#8a6d3b; font-weight:bold; }
+  /* 向导 */
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:flex-start; justify-content:center; padding:40px 12px; overflow:auto; z-index:10; }
+  .modal-bg.open { display:flex; }
+  .modal { background:var(--parch); border:2px solid var(--line); border-radius:8px; max-width:640px; width:100%; padding:22px 24px; }
+  .modal h2 { margin-top:0; }
+  .dice-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .dice-row input { width:56px; text-align:center; }
+  #rollLog { font-size:13px; background:#fffdf5; border:1px solid #c9b489; border-radius:6px; padding:8px 10px; max-height:180px; overflow:auto; white-space:pre-wrap; }
+  .del { color:var(--bad); background:none; border:none; padding:2px 6px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>AD&amp;D 1e 角色卡</h1>
+  <div class="subtitle">Advanced Dungeons &amp; Dragons 1st Edition · Character Sheet · 中英对照 · 非官方粉丝作品，与 Wizards of the Coast 无关<br>Unofficial fan project, not affiliated with Wizards of the Coast. 打开即空白卡，数据只存在你的浏览器 localStorage 里。</div>
+
+  <h2>角色管理 Character</h2>
+  <div class="row">
+    <select id="charSelect"></select>
+    <button id="btnNew">新建空白卡 New Blank</button>
+    <button id="btnSave">保存 Save</button>
+    <button id="btnDelete">删除 Delete</button>
+    <button id="btnExport">导出 JSON</button>
+    <label style="font-size:14px">导入 JSON <input type="file" id="fileImport" accept=".json,application/json" style="width:auto"></label>
+    <button id="btnWizard" class="primary">开始建卡向导 Start Creation Wizard</button>
+  </div>
+  <div class="note" id="saveState"></div>
+
+  <h2>基本信息 Identity</h2>
+  <div class="grid">
+    <label>姓名 Name <input type="text" id="f_name" style="width:150px"></label>
+    <label>玩家 Player <input type="text" id="f_player" style="width:120px"></label>
+    <label>种族 Race
+      <select id="f_race">
+        <option value="">—</option><option>人类 Human</option><option>精灵 Elf</option><option>半精灵 Half-Elf</option>
+        <option>矮人 Dwarf</option><option>侏儒 Gnome</option><option>半身人 Halfling</option><option>半兽人 Half-Orc</option>
+      </select>
+    </label>
+    <label>职业 Class
+      <select id="f_class">
+        <option value="">—</option><option value="fighter">战士 Fighter</option><option value="cleric">牧师 Cleric</option>
+        <option value="thief">盗贼 Thief</option><option value="mu">法师 Magic-User</option>
+        <option value="illusionist">幻术师 Illusionist</option><option value="paladin">圣武士 Paladin</option>
+        <option value="ranger">游侠 Ranger</option><option value="assassin">刺客 Assassin</option>
+        <option value="monk">武僧 Monk</option><option value="druid">德鲁伊 Druid</option><option value="bard">吟游诗人 Bard</option>
+      </select>
+    </label>
+    <label>阵营 Alignment
+      <select id="f_align">
+        <option value="">—</option><option>守序善良 Lawful Good</option><option>中立善良 Neutral Good</option><option>混乱善良 Chaotic Good</option>
+        <option>守序中立 Lawful Neutral</option><option>绝对中立 True Neutral</option><option>混乱中立 Chaotic Neutral</option>
+        <option>守序邪恶 Lawful Evil</option><option>中立邪恶 Neutral Evil</option><option>混乱邪恶 Chaotic Evil</option>
+      </select>
+    </label>
+    <label>等级 Level <input type="number" id="f_level" min="1" value="1"></label>
+    <label>经验 XP <input type="number" id="f_xp" value="0"></label>
+    <label>性别 Sex <input type="text" id="f_sex" style="width:70px"></label>
+    <label>年龄 Age <input type="number" id="f_age" style="width:70px"></label>
+    <label>身高 Height <input type="text" id="f_height" style="width:80px"></label>
+    <label>体重 Weight <input type="text" id="f_weight" style="width:80px"></label>
+  </div>
+  <div class="note">建卡偏好：请手动掷实体骰，把骰面填进向导；本页不替你自动掷骰建人物。Roll physical dice yourself and enter each die face in the wizard.</div>
+
+  <h2>属性 Abilities（3–18，超范围标红拦截）</h2>
+  <table id="abilTable">
+    <tr><th>属性 Ability</th><th>数值 Score</th><th>卓越力量 % / 备注</th><th>规则推导 Derived</th></tr>
+    <tr><td>力量 Strength</td><td><input type="number" id="a_str" min="3" max="18"></td><td><input type="number" id="a_str_ex" min="1" max="100" placeholder="仅 STR 18 战士系"> <span class="note">18/01–00</span></td><td id="d_str"></td></tr>
+    <tr><td>智力 Intelligence</td><td><input type="number" id="a_int" min="3" max="18"></td><td></td><td id="d_int"></td></tr>
+    <tr><td>感知 Wisdom</td><td><input type="number" id="a_wis" min="3" max="18"></td><td></td><td id="d_wis"></td></tr>
+    <tr><td>敏捷 Dexterity</td><td><input type="number" id="a_dex" min="3" max="18"></td><td></td><td id="d_dex"></td></tr>
+    <tr><td>体质 Constitution</td><td><input type="number" id="a_con" min="3" max="18"></td><td></td><td id="d_con"></td></tr>
+    <tr><td>魅力 Charisma</td><td><input type="number" id="a_cha" min="3" max="18"></td><td></td><td id="d_cha"></td></tr>
+  </table>
+  <div class="note" id="primeNote"></div>
+
+  <h2>战斗 Combat</h2>
+  <div class="grid">
+    <label>生命 HP <input type="number" id="f_hp"></label>
+    <label>最大 HP <input type="number" id="f_hpmax"></label>
+    <label>护甲等级 AC <input type="number" id="f_ac"></label>
+    <label>THAC0 <input type="number" id="f_thac0"></label>
+    <span id="d_thac0" class="note"></span>
+  </div>
+  <h3>豁免检定 Saving Throws（按职业与等级自动查表）</h3>
+  <table>
+    <tr><th>麻痹/毒/死亡魔法 PPDM</th><th>法杖/权杖/魔杖 RSW</th><th>石化/变形 PP</th><th>龙息 Breath</th><th>法术 Spells</th></tr>
+    <tr><td id="s_ppdm">—</td><td id="s_rsw">—</td><td id="s_pp">—</td><td id="s_bw">—</td><td id="s_sp">—</td></tr>
+  </table>
+  <div class="note" id="d_saves"></div>
+  <h2>钱币与负重 Coins &amp; Encumbrance</h2>
+  <div class="grid">
+    <label>铂金 pp <input type="number" id="c_pp" value="0"></label>
+    <label>金币 gp <input type="number" id="c_gp" value="0"></label>
+    <label>银币 ep <input type="number" id="c_ep" value="0"></label>
+    <label>银币 sp <input type="number" id="c_sp" value="0"></label>
+    <label>铜币 cp <input type="number" id="c_cp" value="0"></label>
+  </div>
+  <div class="note" id="d_coins"></div>
+  <div class="warn">买武器装备不会自动扣钱：请手动在钱币栏扣除。Buying gear does NOT auto-deduct coins; deduct manually above.</div>
+
+  <h2>装备 Equipment（重量填磅 lb；总负重按金币 gp 计：1 磅 = 10 gp，10 枚硬币 = 1 磅）</h2>
+  <div class="row">
+    <input type="text" id="eq_name" placeholder="物品名称 item" style="width:220px">
+    <input type="number" id="eq_cost" placeholder="价格 gp" style="width:110px">
+    <input type="number" id="eq_wt" placeholder="重量 lb" style="width:110px">
+    <button id="btnAddEq">添加 Add</button>
+  </div>
+  <table id="eqTable"><tr><th>物品 Item</th><th>价格 gp</th><th>重量 lb</th><th></th></tr></table>
+  <div class="note" id="d_enc"></div>
+
+  <h2>武器 Weapons（非熟练惩罚按职业自动：战士 -2 / 牧师·盗贼 -3 / 法师 -5）</h2>
+  <div class="row">
+    <input type="text" id="wp_name" placeholder="武器 weapon" style="width:220px">
+    <label><input type="checkbox" id="wp_prof" checked> 熟练 Proficient</label>
+    <button id="btnAddWp">添加 Add</button>
+  </div>
+  <table id="wpTable"><tr><th>武器 Weapon</th><th>熟练 Proficient</th><th>命中调整 To-hit adj.</th><th></th></tr></table>
+  <div class="note">法师可用武器：匕首、飞镖、木棍、投石索等；牧师限钝器；具体以你的 DM 裁定为准。Allowed weapons vary by class; your DM has final say.</div>
+
+  <h2>语言 Languages</h2>
+  <div class="row">
+    <input type="text" id="lang_new" placeholder="加一门语言，如 精灵语" style="width:260px">
+    <button id="btnAddLang">添加 Add</button>
+    <span id="d_lang" class="note"></span>
+  </div>
+  <div id="langList" class="note"></div>
+
+  <h2>法术书 Spellbook（仅法师 / 幻术师）</h2>
+  <div class="note">1 级法师开局：Read Magic + 学会检定通过的 1 级法术；每天可记忆法术数见上方“每日法术位”。学会检定：掷百分骰 ≤ 学会率即学会。</div>
+  <div class="row">
+    <input type="text" id="sp_name" placeholder="法术名 spell" style="width:220px">
+    <input type="number" id="sp_lvl" placeholder="环 level" value="1" style="width:90px">
+    <input type="number" id="sp_roll" placeholder="百分骰 roll" style="width:110px">
+    <button id="btnAddSp">记录学习 Learn</button>
+  </div>
+  <table id="spTable"><tr><th>法术 Spell</th><th>环 Level</th><th>学会检定 Learn check</th><th>已记忆 Memorized</th><th></th></tr></table>
+
+  <h2>通用骰盘 Dice Tray &amp; 掷骰记录</h2>
+  <div class="row">
+    <button data-dice="4">d4</button><button data-dice="6">d6</button><button data-dice="8">d8</button>
+    <button data-dice="10">d10</button><button data-dice="12">d12</button><button data-dice="20">d20</button>
+    <button data-dice="100">d100</button>
+    <label>数量 <input type="number" id="dice_n" value="1" min="1" max="20" style="width:60px"></label>
+    <label>修正 <input type="number" id="dice_mod" value="0" style="width:70px"></label>
+    <button id="btnRoll">掷骰 Roll</button>
+    <span id="rollResult" class="mem"></span>
+  </div>
+  <div id="rollLog"></div>
+
+  <div class="foot">规则数值表按 AD&amp;D 1e PHB / DMG 整理；如与你的书本版本有出入，以书本与 DM 裁定为准，欢迎提 issue 修正。<br>AD&amp;D is a trademark of Wizards of the Coast. This is an unofficial fan work, not endorsed by or affiliated with WotC.</div>
+</div>
+
+<div class="modal-bg" id="wizBg">
+  <div class="modal">
+    <h2 id="wizTitle">建卡向导 Creation Wizard</h2>
+    <div id="wizStep"></div>
+    <div class="row" style="margin-top:14px">
+      <button id="wizBack">上一步 Back</button>
+      <button id="wizNext" class="primary">下一步 Next</button>
+      <button id="wizClose">关闭 Close</button>
+    </div>
+    <div id="wizErr" class="err"></div>
+  </div>
+</div>
+<script>
+"use strict";
+/* ---------- 规则表（按 AD&D 1e PHB / DMG 整理；如与你的书本版本有出入，以书本与 DM 裁定为准） ---------- */
+const T = {
+  xpBonus: v => v <= 5 ? -20 : v <= 8 ? -10 : v <= 12 ? 0 : v <= 15 ? 5 : 10,
+  strHitDmg: v => v === 3 ? [-3, -1] : v <= 5 ? [-2, -1] : v <= 7 ? [-1, 0] : v <= 15 ? [0, 0] : v === 16 ? [0, 1] : v === 17 ? [1, 1] : [1, 2],
+  strExHitDmg: p => p <= 50 ? [1, 3] : p <= 75 ? [2, 3] : p <= 90 ? [2, 4] : p <= 99 ? [2, 5] : [3, 6],
+  maxEnc: v => ({ 3: 100, 4: 125, 5: 150, 6: 175, 7: 200, 8: 225, 9: 250, 10: 275, 11: 300, 12: 325, 13: 350, 14: 375, 15: 400, 16: 450, 17: 500, 18: 550 }[v] || null),
+  maxEncEx: p => p <= 50 ? 600 : p <= 75 ? 650 : p <= 90 ? 700 : p <= 99 ? 750 : 800,
+  dexDef: v => v === 3 ? 4 : v === 4 ? 3 : v === 5 ? 2 : v === 6 ? 1 : v <= 14 ? 0 : v === 15 ? -1 : v === 16 ? -2 : v === 17 ? -3 : -4,
+  dexMis: v => v === 3 ? -3 : v === 4 ? -2 : v === 5 ? -1 : v <= 15 ? 0 : v === 16 ? 1 : v === 17 ? 2 : 3,
+  conHp: (v, fighter) => v === 3 ? -2 : (v === 4 || v === 5) ? -1 : v <= 14 ? 0 : v === 15 ? 1 : v === 16 ? 2 : v === 17 ? (fighter ? 3 : 2) : (fighter ? 4 : 2),
+  intLearn: v => v <= 8 ? null : v === 9 ? [35, 4, 6] : v <= 12 ? [45, 5, 7] : v <= 14 ? [55, 6, 9] : v <= 16 ? [65, 7, 11] : v === 17 ? [75, 8, 14] : [85, 9, 18],
+  wisBonus: v => v <= 12 ? [] : v === 13 ? [1] : v === 14 ? [2] : v === 15 ? [2, 1] : v === 16 ? [2, 2] : v === 17 ? [2, 2, 1] : [2, 2, 1, 1],
+  cha: v => ({ 3: [1, -30, -25], 4: [1, -25, -20], 5: [2, -20, -15], 6: [2, -15, -10], 7: [3, -10, -5], 8: [3, -5, 0], 9: [4, 0, 0], 10: [4, 0, 0], 11: [4, 0, 0], 12: [5, 0, 0], 13: [5, 5, 5], 14: [6, 10, 10], 15: [7, 15, 15], 16: [8, 20, 20], 17: [10, 25, 25], 18: [15, 30, 30] }[v] || null),
+  thac0: { fighter: [[1, 20], [3, 19], [5, 18], [7, 17], [9, 16], [11, 15], [13, 14], [15, 13], [17, 12]], cleric: [[1, 20], [4, 19], [7, 18], [10, 17], [13, 16], [16, 15], [19, 14]], thief: [[1, 20], [5, 19], [9, 18], [13, 17], [17, 16], [21, 15]], mu: [[1, 21], [6, 20], [11, 19], [16, 18], [21, 17]] },
+  saves: { fighter: { base: [14, 16, 15, 17, 14], size: 2 }, cleric: { base: [10, 14, 13, 16, 15], size: 3 }, thief: { base: [13, 14, 12, 16, 15], size: 4 }, mu: { base: [14, 13, 11, 15, 12], size: 5 } },
+  spellsMu: { 1: [1], 2: [2], 3: [2, 1], 4: [3, 2], 5: [4, 2, 1], 6: [4, 2, 2], 7: [4, 3, 2, 1], 8: [4, 3, 3, 2], 9: [4, 3, 3, 2, 1], 10: [4, 4, 3, 2, 2] },
+  spellsCl: { 1: [1], 2: [2], 3: [2, 1], 4: [3, 2], 5: [3, 2, 1], 6: [3, 3, 2], 7: [3, 3, 2, 1], 8: [3, 3, 3, 2], 9: [4, 4, 3, 2, 1], 10: [4, 4, 3, 3, 2] },
+  hitDie: { fighter: 10, paladin: 10, ranger: 10, cleric: 8, druid: 8, thief: 6, assassin: 6, bard: 6, mu: 4, illusionist: 4, monk: 4 },
+  goldDice: { fighter: "5d4×10", paladin: "5d4×10", ranger: "5d4×10", cleric: "3d6×10", druid: "3d6×10", thief: "2d6×10", assassin: "2d6×10", bard: "2d6×10", mu: "2d4×10", illusionist: "2d4×10", monk: "5d4" },
+  goldSpec: { fighter: [5, 4, 10], paladin: [5, 4, 10], ranger: [5, 4, 10], cleric: [3, 6, 10], druid: [3, 6, 10], thief: [2, 6, 10], assassin: [2, 6, 10], bard: [2, 6, 10], mu: [2, 4, 10], illusionist: [2, 4, 10], monk: [5, 4, 1] },
+  prime: { fighter: "str", paladin: "str", ranger: "str", cleric: "wis", druid: "wis", thief: "dex", assassin: "dex", bard: "dex", mu: "int", illusionist: "int", monk: "str" },
+  primeName: { str: "力量", wis: "感知", dex: "敏捷", int: "智力" },
+  saveGroup: { fighter: "fighter", paladin: "fighter", ranger: "fighter", cleric: "cleric", druid: "cleric", monk: "cleric", thief: "thief", assassin: "thief", bard: "thief", mu: "mu", illusionist: "mu" },
+  thac0Group: { fighter: "fighter", paladin: "fighter", ranger: "fighter", cleric: "cleric", druid: "cleric", monk: "cleric", thief: "thief", assassin: "thief", bard: "thief", mu: "mu", illusionist: "mu" },
+  nonProf: cls => ["fighter", "paladin", "ranger"].includes(cls) ? -2 : ["mu", "illusionist"].includes(cls) ? -5 : -3,
+  fighterGroup: cls => ["fighter", "paladin", "ranger"].includes(cls),
+  caster: cls => cls === "mu" || cls === "illusionist",
+  divine: cls => cls === "cleric" || cls === "druid",
+};
+const $ = id => document.getElementById(id);
+const fmt = n => (n > 0 ? "+" + n : "" + n);
+function bandVal(bands, lvl) { let v = bands[0][1]; for (const [from, val] of bands) if (lvl >= from) v = val; return v; }
+function savesFor(cls, lvl) {
+  const g = T.saves[T.saveGroup[cls] || "fighter"];
+  const steps = Math.floor((lvl - 1) / g.size);
+  return g.base.map(x => Math.max(2, x - steps));
+}
+
+/* ---------- 状态 ---------- */
+const LS_KEY = "adnd1e_chars_v1";
+function blankChar() {
+  return { name: "", player: "", race: "", cls: "", align: "", level: 1, xp: 0, sex: "", age: "", height: "", weight: "",
+    ab: { str: "", strEx: "", int: "", wis: "", dex: "", con: "", cha: "" },
+    hp: "", hpmax: "", ac: "", thac0: "", coins: { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 },
+    equipment: [], weapons: [], languages: [], spells: [] };
+}
+let chars = [];
+let cur = 0;
+try { chars = JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch (e) { chars = []; }
+if (!chars.length) { chars = [blankChar()]; }
+function curChar() { return chars[cur]; }
+function saveAll() { try { localStorage.setItem(LS_KEY, JSON.stringify(chars)); $("saveState").textContent = "已保存到浏览器 localStorage（" + new Date().toLocaleString() + "）。"; } catch (e) { $("saveState").textContent = "保存失败：浏览器存储不可用。"; } }
+function isBlank(c) {
+  return !c.name && !c.player && !c.cls && !c.race && Object.values(c.ab).every(v => v === "") && !c.equipment.length && !c.weapons.length && !c.spells.length && !c.languages.length;
+}
+
+function gather() {
+  const c = curChar();
+  c.name = $("f_name").value.trim(); c.player = $("f_player").value.trim(); c.race = $("f_race").value; c.cls = $("f_class").value;
+  c.align = $("f_align").value; c.level = parseInt($("f_level").value) || 1; c.xp = parseInt($("f_xp").value) || 0;
+  c.sex = $("f_sex").value.trim(); c.age = $("f_age").value; c.height = $("f_height").value.trim(); c.weight = $("f_weight").value.trim();
+  c.ab = { str: $("a_str").value, strEx: $("a_str_ex").value, int: $("a_int").value, wis: $("a_wis").value, dex: $("a_dex").value, con: $("a_con").value, cha: $("a_cha").value };
+  c.hp = $("f_hp").value; c.hpmax = $("f_hpmax").value; c.ac = $("f_ac").value; c.thac0 = $("f_thac0").value;
+  c.coins = { pp: parseInt($("c_pp").value) || 0, gp: parseInt($("c_gp").value) || 0, ep: parseInt($("c_ep").value) || 0, sp: parseInt($("c_sp").value) || 0, cp: parseInt($("c_cp").value) || 0 };
+  return c;
+}
+function fillForm(c) {
+  $("f_name").value = c.name; $("f_player").value = c.player; $("f_race").value = c.race; $("f_class").value = c.cls;
+  $("f_align").value = c.align; $("f_level").value = c.level; $("f_xp").value = c.xp; $("f_sex").value = c.sex;
+  $("f_age").value = c.age; $("f_height").value = c.height; $("f_weight").value = c.weight;
+  $("a_str").value = c.ab.str; $("a_str_ex").value = c.ab.strEx; $("a_int").value = c.ab.int; $("a_wis").value = c.ab.wis;
+  $("a_dex").value = c.ab.dex; $("a_con").value = c.ab.con; $("a_cha").value = c.ab.cha;
+  $("f_hp").value = c.hp; $("f_hpmax").value = c.hpmax; $("f_ac").value = c.ac; $("f_thac0").value = c.thac0;
+  $("c_pp").value = c.coins.pp; $("c_gp").value = c.coins.gp; $("c_ep").value = c.coins.ep; $("c_sp").value = c.coins.sp; $("c_cp").value = c.coins.cp;
+  renderLists(); renderDerived();
+}
+function refreshSelect() {
+  const s = $("charSelect"); s.innerHTML = "";
+  chars.forEach((c, i) => { const o = document.createElement("option"); o.value = i; o.textContent = (c.name || ("未命名角色 " + (i + 1))) + "（" + (c.cls || "未选职业") + " " + (c.level || 1) + " 级）"; s.appendChild(o); });
+  s.value = cur;
+}
+function numOrNull(v) { if (v === "" || v === null || v === undefined) return null; const n = parseInt(v); return isNaN(n) ? null : n; }
+function markRange(el, v, lo, hi) {
+  if (v === null) { el.classList.remove("bad"); return true; }
+  const ok = v >= lo && v <= hi; el.classList.toggle("bad", !ok); return ok;
+}
+
+function renderDerived() {
+  const c = gather();
+  const ab = {}; let allOk = true;
+  [["a_str", "str", 3, 18], ["a_int", "int", 3, 18], ["a_wis", "wis", 3, 18], ["a_dex", "dex", 3, 18], ["a_con", "con", 3, 18], ["a_cha", "cha", 3, 18]].forEach(([id, k, lo, hi]) => {
+    const v = numOrNull(c.ab[k]); ab[k] = v; if (!markRange($(id), v, lo, hi)) allOk = false;
+  });
+  const ex = numOrNull(c.ab.strEx);
+  if (ex !== null && !markRange($("a_str_ex"), ex, 1, 100)) allOk = false;
+  const fighter = T.fighterGroup(c.cls);
+  // 力量
+  if (ab.str === null) $("d_str").textContent = "—";
+  else if (ab.str === 18 && fighter && ex !== null) { const [h, d] = T.strExHitDmg(ex); $("d_str").textContent = "命中 " + fmt(h) + " / 伤害 " + fmt(d) + "；最大负重 " + T.maxEncEx(ex) + " gp"; }
+  else { const [h, d] = T.strHitDmg(ab.str); $("d_str").textContent = "命中 " + fmt(h) + " / 伤害 " + fmt(d) + "；最大负重 " + T.maxEnc(ab.str) + " gp"; }
+  // 智力
+  if (ab.int === null) $("d_int").textContent = "—";
+  else { const t = T.intLearn(ab.int); $("d_int").textContent = t ? ("学会率 " + t[0] + "%；每级法术数 " + t[1] + "–" + t[2] + "；附加语言 " + Math.max(0, ab.int - 11) + " 门") : "智力不足 9，难以研习法术（以 DM 裁定为准）"; }
+  // 感知
+  if (ab.wis === null) $("d_wis").textContent = "—";
+  else { const b = T.wisBonus(ab.wis); $("d_wis").textContent = b.length ? ("奖励法术：" + b.map((n, i) => (i + 1) + " 环×" + n).join("，")) : "无奖励法术"; }
+  // 敏捷
+  if (ab.dex === null) $("d_dex").textContent = "—";
+  else $("d_dex").textContent = "防御调整 " + fmt(T.dexDef(ab.dex)) + "；远程命中 " + fmt(T.dexMis(ab.dex));
+  // 体质
+  if (ab.con === null) $("d_con").textContent = "—";
+  else $("d_con").textContent = "每级 HP 调整 " + fmt(T.conHp(ab.con, fighter)) + (fighter ? "（战士系）" : "（非战士系上限 +2）");
+  // 魅力
+  if (ab.cha === null) $("d_cha").textContent = "—";
+  else { const t = T.cha(ab.cha); $("d_cha").textContent = "随从上限 " + t[0] + "；忠诚 " + fmt(t[1]) + "%；反应 " + fmt(t[2]) + "%"; }
+  // 主属性经验
+  const pk = T.prime[c.cls];
+  $("primeNote").innerHTML = pk && ab[pk] !== null
+    ? ("主属性 " + T.primeName[pk] + " " + ab[pk] + " → 经验调整 " + fmt(T.xpBonus(ab[pk])) + "%（13–15 为 +5%，16+ 为 +10%；以本卡规则为准）。" + (c.cls === "fighter" && ab.str === 18 ? " STR 18 战士应得 +10%：请确认经验加值已打开。" : ""))
+    : "选职业后显示主属性经验加值。";
+  // THAC0 / 豁免 / 法术位
+  if (c.cls) {
+    $("d_thac0").textContent = "查表 THAC0（" + c.level + " 级）：" + bandVal(T.thac0[T.thac0Group[c.cls]], c.level) + "；你填的值若与查表不同，以你的记录为准。";
+    const sv = savesFor(c.cls, c.level);
+    $("s_ppdm").textContent = sv[0]; $("s_rsw").textContent = sv[1]; $("s_pp").textContent = sv[2]; $("s_bw").textContent = sv[3]; $("s_sp").textContent = sv[4];
+    $("d_saves").textContent = "豁免按职业组每 " + T.saves[T.saveGroup[c.cls]].size + " 级改善 1 点，下限 2。";
+    if (T.caster(c.cls)) { const t = T.spellsMu[Math.min(c.level, 10)] || []; $("d_spells").textContent = "法师每日法术位：" + t.map((n, i) => (i + 1) + " 环×" + n).join("，"); }
+    else if (T.divine(c.cls)) { const t = T.spellsCl[Math.min(c.level, 10)] || []; const b = ab.wis !== null ? T.wisBonus(ab.wis) : []; $("d_spells").textContent = "牧师每日法术位：" + t.map((n, i) => (i + 1) + " 环×" + n).join("，") + (b.length ? "；感知奖励另加：" + b.map((n, i) => (i + 1) + " 环×" + n).join("，") : ""); }
+    else $("d_spells").textContent = "本职业无法术位。";
+  } else { $("d_thac0").textContent = ""; ["s_ppdm", "s_rsw", "s_pp", "s_bw", "s_sp"].forEach(id => $(id).textContent = "—"); $("d_spells").textContent = "—"; }
+  // 钱币与负重
+  const coins = c.coins.pp + c.coins.gp + c.coins.ep + c.coins.sp + c.coins.cp;
+  const eqWt = c.equipment.reduce((s, e) => s + (parseFloat(e.wt) || 0) * 10, 0);
+  const total = coins + eqWt;
+  $("d_coins").textContent = "硬币共 " + coins + " 枚（" + (coins / 10) + " 磅）；装备折合 " + eqWt + " gp；总负重 " + total + " gp。";
+  let enc = "";
+  if (ab.str !== null) {
+    const max = ab.str === 18 && fighter && ex !== null ? T.maxEncEx(ex) : T.maxEnc(ab.str);
+    enc = "力量 " + ab.str + (ex !== null && ab.str === 18 && fighter ? "/" + ex : "") + " 最大负重 " + max + " gp；当前 " + total + " gp" + (total > max ? " —— 已超重！请让队友分担重物。" : "，未超重。");
+  } else enc = "填力量后显示负重上限。";
+  $("d_enc").textContent = enc;
+  // 语言提示
+  $("d_lang").textContent = ab.int !== null ? ("建议语言数：通用语 + 阵营语 + " + Math.max(0, ab.int - 11) + " 门附加 = " + (2 + Math.max(0, ab.int - 11)) + " 门") : "";
+  return allOk;
+}
+function renderLists() {
+  const c = curChar();
+  $("eqTable").innerHTML = "<tr><th>物品 Item</th><th>价格 gp</th><th>重量 lb</th><th></th></tr>" + c.equipment.map((e, i) =>
+    "<tr><td>" + esc(e.name) + "</td><td>" + esc(e.cost) + "</td><td>" + esc(e.wt) + "</td><td><button class='del' data-eq='" + i + "'>删</button></td></tr>").join("");
+  const pen = T.nonProf(c.cls);
+  $("wpTable").innerHTML = "<tr><th>武器 Weapon</th><th>熟练 Proficient</th><th>命中调整 To-hit adj.</th><th></th></tr>" + c.weapons.map((w, i) =>
+    "<tr><td>" + esc(w.name) + "</td><td>" + (w.prof ? "是" : "否") + "</td><td>" + (w.prof ? "—" : pen) + "</td><td><button class='del' data-wp='" + i + "'>删</button></td></tr>").join("");
+  $("langList").innerHTML = c.languages.length ? c.languages.map(l => "<span class='tag'>" + esc(l) + "</span>").join("") : "（未填语言）";
+  const learnRate = (() => { const v = numOrNull(c.ab.int); const t = v === null ? null : T.intLearn(v); return t ? t[0] : null; })();
+  $("spTable").innerHTML = "<tr><th>法术 Spell</th><th>环 Level</th><th>学会检定 Learn check</th><th>已记忆 Memorized</th><th></th></tr>" + c.spells.map((s, i) =>
+    "<tr><td>" + esc(s.name) + "</td><td>" + esc(s.lvl) + "</td><td>" + (s.learned === null ? "—" : (s.learned ? "学会 ✓" : "未学会 ✗") + (learnRate !== null ? "（学会率 " + learnRate + "%）" : "")) + "</td><td><input type='checkbox' data-mem='" + i + "'" + (s.mem ? " checked" : "") + "></td><td><button class='del' data-sp='" + i + "'>删</button></td></tr>").join("");
+  document.querySelectorAll("[data-eq]").forEach(b => b.onclick = () => { gather(); curChar().equipment.splice(+b.dataset.eq, 1); fillForm(curChar()); saveAll(); });
+  document.querySelectorAll("[data-wp]").forEach(b => b.onclick = () => { gather(); curChar().weapons.splice(+b.dataset.wp, 1); fillForm(curChar()); saveAll(); });
+  document.querySelectorAll("[data-sp]").forEach(b => b.onclick = () => { gather(); curChar().spells.splice(+b.dataset.sp, 1); fillForm(curChar()); saveAll(); });
+  document.querySelectorAll("[data-mem]").forEach(b => b.onchange = () => { gather(); curChar().spells[+b.dataset.mem].mem = b.checked; saveAll(); checkMemorized(); });
+  checkMemorized();
+}
+function checkMemorized() {
+  const c = curChar(); if (!T.caster(c.cls)) return;
+  const slots = (T.spellsMu[Math.min(c.level, 10)] || [0])[0] || 0;
+  const n = c.spells.filter(s => s.mem).length;
+  if (n > slots) alert("已记忆 " + n + " 个法术，超过 " + c.level + " 级法师每日 " + slots + " 个 1 级法术位。");
+}
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+/* ---------- 事件 ---------- */
+document.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => { gather(); renderDerived(); }));
+$("charSelect").onchange = () => { gather(); saveAll(); cur = +$("charSelect").value; fillForm(curChar()); };
+$("btnNew").onclick = () => { gather(); saveAll(); chars.push(blankChar()); cur = chars.length - 1; refreshSelect(); fillForm(curChar()); };
+$("btnSave").onclick = () => { gather(); saveAll(); refreshSelect(); };
+$("btnDelete").onclick = () => { if (chars.length <= 1) { chars = [blankChar()]; } else { chars.splice(cur, 1); } cur = 0; refreshSelect(); fillForm(curChar()); saveAll(); };
+$("btnExport").onclick = () => { gather(); const blob = new Blob([JSON.stringify(curChar(), null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = (curChar().name || "character") + "-adnd1e.json"; a.click(); };
+$("fileImport").onchange = ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const c = Object.assign(blankChar(), JSON.parse(r.result)); chars.push(c); cur = chars.length - 1; refreshSelect(); fillForm(c); saveAll(); } catch (e) { alert("JSON 导入失败：" + e.message); } }; r.readAsText(f); };
+$("btnAddEq").onclick = () => { gather(); const c = curChar(); if (!$("eq_name").value.trim()) return; c.equipment.push({ name: $("eq_name").value.trim(), cost: $("eq_cost").value, wt: $("eq_wt").value }); $("eq_name").value = ""; $("eq_cost").value = ""; $("eq_wt").value = ""; fillForm(c); saveAll(); };
+$("btnAddWp").onclick = () => { gather(); const c = curChar(); if (!$("wp_name").value.trim()) return; c.weapons.push({ name: $("wp_name").value.trim(), prof: $("wp_prof").checked }); $("wp_name").value = ""; fillForm(c); saveAll(); };
+$("btnAddLang").onclick = () => { gather(); const c = curChar(); if (!$("lang_new").value.trim()) return; c.languages.push($("lang_new").value.trim()); $("lang_new").value = ""; fillForm(c); saveAll(); };
+$("btnAddSp").onclick = () => { gather(); const c = curChar(); const rate = (() => { const v = numOrNull(c.ab.int); const t = v === null ? null : T.intLearn(v); return t ? t[0] : null; })();
+  if (!$("sp_name").value.trim()) return; const roll = numOrNull($("sp_roll").value);
+  const learned = rate === null || roll === null ? null : roll <= rate;
+  c.spells.push({ name: $("sp_name").value.trim(), lvl: $("sp_lvl").value || 1, learned: learned, mem: false });
+  $("sp_name").value = ""; $("sp_roll").value = ""; fillForm(c); saveAll(); };
+
+/* ---------- 通用骰盘 ---------- */
+function rollDie(n) { return 1 + Math.floor(Math.random() * n); }
+$("btnRoll").onclick = () => {
+  const n = Math.max(1, Math.min(20, parseInt($("dice_n").value) || 1));
+  const mod = parseInt($("dice_mod").value) || 0;
+  const btn = document.querySelector("[data-dice].active"); void btn;
+  const sides = parseInt($("btnRoll").dataset.sides || "20");
+  const faces = []; for (let i = 0; i < n; i++) faces.push(rollDie(sides));
+  const total = faces.reduce((a, b) => a + b, 0) + mod;
+  $("rollResult").textContent = n + "d" + sides + (mod ? fmt(mod) : "") + " = " + total + "（" + faces.join(", ") + "）";
+  $("rollLog").textContent = new Date().toLocaleTimeString() + "  " + n + "d" + sides + (mod ? fmt(mod) : "") + " = " + total + "（" + faces.join(", ") + "）\n" + $("rollLog").textContent;
+};
+document.querySelectorAll("[data-dice]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("[data-dice]").forEach(x => x.classList.remove("primary")); b.classList.add("primary");
+  $("btnRoll").dataset.sides = b.dataset.dice; $("btnRoll").textContent = "掷 d" + b.dataset.dice + " Roll";
+});
+$("btnRoll").dataset.sides = "20";
+
+/* ---------- 建卡向导（只开新卡；全程手动填骰面） ---------- */
+const wiz = { step: 0, method: "3d6", data: null };
+const ABILITIES = [["str", "力量 Strength"], ["int", "智力 Intelligence"], ["wis", "感知 Wisdom"], ["dex", "敏捷 Dexterity"], ["con", "体质 Constitution"], ["cha", "魅力 Charisma"]];
+function dieInput(id, sides) { return "<input type='number' id='" + id + "' min='1' max='" + sides + "' placeholder='1-" + sides + "'>"; }
+function wizShow() {
+  const w = wiz, d = w.data, el = $("wizStep"); $("wizErr").textContent = "";
+  const titles = ["第 1 步 · 掷属性 Roll Abilities", "第 2 步 · 种族与职业 Race & Class", "第 3 步 · 卓越力量 Exceptional Strength", "第 4 步 · 生命值 Hit Points", "第 5 步 · 起始金币 Starting Gold", "第 6 步 · 语言 Languages", "第 7 步 · 武器 Weapons", "第 8 步 · 法术书 Spellbook", "第 9 步 · 身份 Identity", "完成 · 汇总 Summary"];
+  $("wizTitle").textContent = titles[w.step];
+  if (w.step === 0) {
+    el.innerHTML = "<p class='note'>请手动掷实体骰，逐颗填入骰面（1–6，超范围标红拦截）。三种方法：</p>"
+      + "<div class='row'><label><input type='radio' name='wmethod' value='3d6' " + (w.method === "3d6" ? "checked" : "") + "> 3d6 顺序（按力量→魅力顺序）</label>"
+      + "<label><input type='radio' name='wmethod' value='4d6' " + (w.method === "4d6" ? "checked" : "") + "> DMG 方法一：4d6 去最低，自由分配</label>"
+      + "<label><input type='radio' name='wmethod' value='3d6x2' " + (w.method === "3d6x2" ? "checked" : "") + "> DMG 方法三：3d6 两次取高，顺序</label></div><div id='wDice'></div>";
+    document.querySelectorAll("input[name=wmethod]").forEach(r => r.onchange = () => { w.method = r.value; wizDice(); });
+    wizDice();
+  } else if (w.step === 1) {
+    el.innerHTML = "<div class='grid'><label>种族 Race <select id='w_race'><option value=''>—</option><option>人类 Human</option><option>精灵 Elf</option><option>半精灵 Half-Elf</option><option>矮人 Dwarf</option><option>侏儒 Gnome</option><option>半身人 Halfling</option><option>半兽人 Half-Orc</option></select></label>"
+      + "<label>职业 Class <select id='w_class'><option value=''>—</option><option value='fighter'>战士 Fighter</option><option value='cleric'>牧师 Cleric</option><option value='thief'>盗贼 Thief</option><option value='mu'>法师 Magic-User</option><option value='illusionist'>幻术师 Illusionist</option><option value='paladin'>圣武士 Paladin</option><option value='ranger'>游侠 Ranger</option><option value='assassin'>刺客 Assassin</option><option value='monk'>武僧 Monk</option><option value='druid'>德鲁伊 Druid</option><option value='bard'>吟游诗人 Bard</option></select></label></div>"
+      + "<p class='note'>选职业后主属性经验加值：战士/圣武士/游侠看力量，牧师/德鲁伊看感知，盗贼/刺客/诗人看敏捷，法师/幻术师看智力。</p>";
+    if (d.race) $("w_race").value = d.race; if (d.cls) $("w_class").value = d.cls;
+  } else if (w.step === 2) {
+    const need = T.fighterGroup(d.cls) && d.ab.str === 18;
+    el.innerHTML = need
+      ? "<p>力量 18 的战士系人物请掷百分骰，填入百分骰结果（1–100）：</p><div class='dice-row'>" + dieInput("w_ex", 100) + "<span class='note'>01–50：命中 +1 / 伤害 +3；51–75：+2/+3；76–90：+2/+4；91–99：+2/+5；00（填 100）：+3/+6。</span></div>"
+      : "<p class='note'>本步不适用（卓越力量仅限力量 18 的战士系人物），点“下一步”跳过。</p>";
+    if (d.strEx) $("w_ex").value = d.strEx;
+  } else if (w.step === 3) {
+    const hd = T.hitDie[d.cls] || 6, conAdj = d.ab.con !== null && d.ab.con !== "" ? T.conHp(parseInt(d.ab.con), T.fighterGroup(d.cls)) : 0;
+    el.innerHTML = "<p>1 级生命骰 d" + hd + "：请填掷出的骰面，体质调整 " + fmt(conAdj) + " 会自动计入（最低 1 点）。</p><div class='dice-row'>" + dieInput("w_hp", hd) + "<span id='w_hp_show' class='mem'></span></div>";
+  } else if (w.step === 4) {
+    const spec = T.goldSpec[d.cls] || [3, 6, 10];
+    let inputs = ""; for (let i = 0; i < spec[0]; i++) inputs += dieInput("w_g" + i, spec[1]);
+    el.innerHTML = "<p>起始金币 " + (T.goldDice[d.cls] || "3d6×10") + "：请逐颗填入骰面。</p><div class='dice-row'>" + inputs + "<span id='w_g_show' class='mem'></span></div>";
+  } else if (w.step === 5) {
+    const add = d.ab.int !== null && d.ab.int !== "" ? Math.max(0, parseInt(d.ab.int) - 11) : 0;
+    el.innerHTML = "<p>语言：通用语 + 阵营语 + " + add + " 门附加（智力 " + d.ab.int + "）。请用逗号分隔填入附加语言：</p><input type='text' id='w_lang' placeholder='如：精灵语，矮人语，龙语'><p class='note'>已填：通用语，阵营语。</p>";
+    if (d.languages.length) $("w_lang").value = d.languages.join("，");
+  } else if (w.step === 6) {
+    const pen = T.nonProf(d.cls);
+    el.innerHTML = "<p>武器：非熟练惩罚 " + pen + "（按职业自动）。</p><div class='row'><input type='text' id='w_wp' placeholder='武器名' style='width:200px'><label><input type='checkbox' id='w_prof' checked> 熟练</label><button id='w_addwp'>添加</button></div><div id='w_wplist' class='note'></div>";
+    renderWizWp();
+    $("w_addwp").onclick = () => { if ($("w_wp").value.trim()) { d.weapons.push({ name: $("w_wp").value.trim(), prof: $("w_prof").checked }); $("w_wp").value = ""; renderWizWp(); } };
+  } else if (w.step === 7) {
+    if (!T.caster(d.cls)) { el.innerHTML = "<p class='note'>本职业无法术书，点“下一步”跳过。</p>"; }
+    else {
+      const rate = T.intLearn(parseInt(d.ab.int)); const r = rate ? rate[0] : null;
+      el.innerHTML = "<p>法师开局法术书自动含 Read Magic。继续添加 1 级法术：填百分骰结果，≤ 学会率 " + r + "% 即学会。</p><div class='row'><input type='text' id='w_sp' placeholder='法术名' style='width:200px'><input type='number' id='w_roll' placeholder='百分骰' style='width:100px'><button id='w_addsp'>添加</button></div><div id='w_splist' class='note'></div>";
+      renderWizSp();
+      $("w_addsp").onclick = () => { if ($("w_sp").value.trim()) { const roll = numOrNull($("w_roll").value); d.spells.push({ name: $("w_sp").value.trim(), lvl: 1, learned: roll === null ? null : roll <= r, mem: false }); $("w_sp").value = ""; $("w_roll").value = ""; renderWizSp(); } };
+    }
+  } else if (w.step === 8) {
+    el.innerHTML = "<div class='grid'><label>姓名 Name <input type='text' id='w_name' style='width:150px'></label><label>玩家 Player <input type='text' id='w_player' style='width:120px'></label>"
+      + "<label>阵营 Alignment <select id='w_align'><option value=''>—</option><option>守序善良 Lawful Good</option><option>中立善良 Neutral Good</option><option>混乱善良 Chaotic Good</option><option>守序中立 Lawful Neutral</option><option>绝对中立 True Neutral</option><option>混乱中立 Chaotic Neutral</option><option>守序邪恶 Lawful Evil</option><option>中立邪恶 Neutral Evil</option><option>混乱邪恶 Chaotic Evil</option></select></label>"
+      + "<label>性别 Sex <input type='text' id='w_sex' style='width:70px'></label><label>年龄 Age <input type='number' id='w_age' style='width:70px'></label></div>";
+    if (d.name) $("w_name").value = d.name; if (d.player) $("w_player").value = d.player; if (d.align) $("w_align").value = d.align; if (d.sex) $("w_sex").value = d.sex; if (d.age) $("w_age").value = d.age;
+  } else if (w.step === 9) {
+    const abLine = ABILITIES.map(([k, n]) => n + " " + d.ab[k] + (k === "str" && d.strEx ? "/" + d.strEx : "")).join("，");
+    el.innerHTML = "<p><b>" + esc(d.name || "未命名") + "</b> · " + esc(d.race || "") + " " + esc(className(d.cls)) + " 1 级 · " + esc(d.align || "") + "</p>"
+      + "<p>属性：" + abLine + "</p><p>HP：" + d.hp + "；起始金币：" + d.gold + " gp；语言：通用语，阵营语" + (d.languages.length ? "，" + d.languages.join("，") : "") + "</p>"
+      + "<p>武器：" + (d.weapons.length ? d.weapons.map(wp => wp.name + (wp.prof ? "（熟练）" : "（非熟练 " + T.nonProf(d.cls) + "）")).join("，") : "无") + "</p>"
+      + "<p>法术书：" + (d.spells.length ? d.spells.map(s => s.name + (s.learned === null ? "" : s.learned ? "（学会）" : "（未学会）")).join("，") : "无") + "</p>"
+      + "<p><button id='w_apply' class='primary'>写入角色卡并保存 Apply &amp; Save</button></p>";
+    $("w_apply").onclick = () => { applyWizard(); };
+  }
+  $("wizBack").style.visibility = w.step === 0 ? "hidden" : "visible";
+  $("wizNext").textContent = w.step === 9 ? "关闭 Close" : "下一步 Next";
+}
+function className(cls) { const m = { fighter: "战士 Fighter", cleric: "牧师 Cleric", thief: "盗贼 Thief", mu: "法师 Magic-User", illusionist: "幻术师 Illusionist", paladin: "圣武士 Paladin", ranger: "游侠 Ranger", assassin: "刺客 Assassin", monk: "武僧 Monk", druid: "德鲁伊 Druid", bard: "吟游诗人 Bard" }; return m[cls] || ""; }
+function wizDice() {
+  const w = wiz, box = $("wDice"); let html = "";
+  if (w.method === "3d6") {
+    ABILITIES.forEach(([k, n], ai) => { html += "<div class='dice-row'><span style='width:150px'>" + n + "</span>" + dieInput("wd_" + ai + "_0", 6) + dieInput("wd_" + ai + "_1", 6) + dieInput("wd_" + ai + "_2", 6) + "<span class='mem' id='ws_" + ai + "'></span></div>"; });
+    html += "<p class='note'>每组 3 颗骰相加即该属性（3–18）。</p>";
+  } else if (w.method === "4d6") {
+    for (let g = 0; g < 6; g++) { html += "<div class='dice-row'><span style='width:90px'>第 " + (g + 1) + " 组</span>" + dieInput("wd_" + g + "_0", 6) + dieInput("wd_" + g + "_1", 6) + dieInput("wd_" + g + "_2", 6) + dieInput("wd_" + g + "_3", 6) + "<span class='mem' id='ws_" + g + "'></span></div>"; }
+    html += "<p class='note'>每组去最低一颗后相加；下一步之前请在第 2 步后用下面的分配栏把 6 组数值分给 6 项属性（本页简化：按组顺序自动对应力量→魅力，如需自由分配请在主卡上改数）。</p>";
+  } else {
+    ABILITIES.forEach(([k, n], ai) => { html += "<div class='dice-row'><span style='width:150px'>" + n + "</span>第 1 次：" + dieInput("wd_" + ai + "a_0", 6) + dieInput("wd_" + ai + "a_1", 6) + dieInput("wd_" + ai + "a_2", 6) + " 第 2 次：" + dieInput("wd_" + ai + "b_0", 6) + dieInput("wd_" + ai + "b_1", 6) + dieInput("wd_" + ai + "b_2", 6) + "<span class='mem' id='ws_" + ai + "'></span></div>"; });
+    html += "<p class='note'>每项属性掷两次 3d6，取高的一次。</p>";
+  }
+  box.innerHTML = html;
+}
+function readDice(prefix, count, sides) {
+  const faces = [];
+  for (let i = 0; i < count; i++) { const el = $(prefix + i); const v = numOrNull(el.value); if (v === null || v < 1 || v > sides) { el.classList.add("bad"); return null; } el.classList.remove("bad"); faces.push(v); }
+  return faces;
+}
+function wizReadStep0() {
+  const w = wiz, ab = {};
+  if (w.method === "3d6") {
+    for (let ai = 0; ai < 6; ai++) { const f = readDice("wd_" + ai + "_", 3, 6); if (!f) return false; const s = f.reduce((a, b) => a + b, 0); ab[ABILITIES[ai][0]] = s; $("ws_" + ai).textContent = "= " + s; }
+  } else if (w.method === "4d6") {
+    for (let g = 0; g < 6; g++) { const f = readDice("wd_" + g + "_", 4, 6); if (!f) return false; const s = f.reduce((a, b) => a + b, 0) - Math.min(...f); ab[ABILITIES[g][0]] = s; $("ws_" + g).textContent = "= " + s + "（去最低 " + Math.min(...f) + "）"; }
+  } else {
+    for (let ai = 0; ai < 6; ai++) { const f1 = readDice("wd_" + ai + "a_", 3, 6); const f2 = readDice("wd_" + ai + "b_", 3, 6); if (!f1 || !f2) return false; const s = Math.max(f1.reduce((a, b) => a + b, 0), f2.reduce((a, b) => a + b, 0)); ab[ABILITIES[ai][0]] = s; $("ws_" + ai).textContent = "= " + s; }
+  }
+  w.data.ab = ab; return true;
+}
+function renderWizWp() { const d = wiz.data; $("w_wplist").innerHTML = d.weapons.length ? d.weapons.map(wp => "<span class='tag'>" + esc(wp.name) + (wp.prof ? "（熟练）" : "（非熟练）") + "</span>").join("") : "（未添加）"; }
+function renderWizSp() { const d = wiz.data; $("w_splist").innerHTML = "<span class='tag'>Read Magic（自动）</span>" + d.spells.map(s => "<span class='tag'>" + esc(s.name) + (s.learned === null ? "" : s.learned ? "（学会）" : "（未学会）") + "</span>").join(""); }
+function wizNext() {
+  const w = wiz, d = w.data;
+  if (w.step === 0) { if (!wizReadStep0()) { $("wizErr").textContent = "有骰面未填或超出 1–6，请检查标红的格子。"; return; } }
+  if (w.step === 1) { d.race = $("w_race").value; d.cls = $("w_class").value; if (!d.cls) { $("wizErr").textContent = "请先选职业。"; return; } }
+  if (w.step === 2) { const ex = $("w_ex"); if (ex) { const v = numOrNull(ex.value); if (v === null || v < 1 || v > 100) { ex.classList.add("bad"); $("wizErr").textContent = "百分骰填 1–100。"; return; } d.strEx = v; } }
+  if (w.step === 3) { const hd = T.hitDie[d.cls] || 6; const f = readDice("w_hp", 1, hd); if (!f) { $("wizErr").textContent = "生命骰面填 1–" + hd + "。"; return; } const adj = T.conHp(parseInt(d.ab.con), T.fighterGroup(d.cls)); d.hp = Math.max(1, f[0] + adj); }
+  if (w.step === 4) { const spec = T.goldSpec[d.cls] || [3, 6, 10]; const faces = []; for (let i = 0; i < spec[0]; i++) { const el = $("w_g" + i); const v = numOrNull(el.value); if (v === null || v < 1 || v > spec[1]) { el.classList.add("bad"); $("wizErr").textContent = "金币骰面填 1–" + spec[1] + "。"; return; } el.classList.remove("bad"); faces.push(v); } d.gold = faces.reduce((a, b) => a + b, 0) * spec[2]; }
+  if (w.step === 5) { const v = $("w_lang").value.trim(); d.languages = v ? v.split(/[,，、]/).map(s => s.trim()).filter(Boolean) : []; }
+  if (w.step === 8) { d.name = $("w_name").value.trim(); d.player = $("w_player").value.trim(); d.align = $("w_align").value; d.sex = $("w_sex").value.trim(); d.age = $("w_age").value; }
+  if (w.step === 9) { $("wizBg").classList.remove("open"); return; }
+  // 跳过不适用的步
+  let next = w.step + 1;
+  if (next === 2 && !(T.fighterGroup(d.cls) && d.ab.str === 18)) next = 3;
+  if (next === 7 && !T.caster(d.cls)) next = 8;
+  w.step = next; wizShow();
+}
+function wizBack() { let prev = wiz.step - 1; const d = wiz.data; if (prev === 7 && !T.caster(d.cls)) prev = 6; if (prev === 2 && !(T.fighterGroup(d.cls) && d.ab.str === 18)) prev = 1; wiz.step = Math.max(0, prev); wizShow(); }
+function applyWizard() {
+  const d = wiz.data, c = curChar();
+  c.name = d.name; c.player = d.player; c.race = d.race; c.cls = d.cls; c.align = d.align; c.sex = d.sex; c.age = d.age;
+  c.level = 1; c.xp = 0;
+  c.ab = { str: d.ab.str, strEx: d.strEx || "", int: d.ab.int, wis: d.ab.wis, dex: d.ab.dex, con: d.ab.con, cha: d.ab.cha };
+  c.hp = d.hp; c.hpmax = d.hp; c.coins.gp = d.gold;
+  c.languages = ["通用语", "阵营语"].concat(d.languages);
+  c.weapons = d.weapons;
+  c.spells = [{ name: "Read Magic", lvl: 1, learned: true, mem: false }].concat(d.spells);
+  fillForm(c); saveAll(); refreshSelect(); $("wizBg").classList.remove("open");
+  logRoll("向导完成：已写入 " + (d.name || "未命名角色") + " 的角色卡。");
+}
+function logRoll(text) { $("rollLog").textContent = new Date().toLocaleTimeString() + "  " + text + "\n" + $("rollLog").textContent; }
+$("btnWizard").onclick = () => {
+  gather();
+  if (!isBlank(curChar())) { $("wizBg").classList.add("open"); wiz.data = null; $("wizTitle").textContent = "建卡向导 Creation Wizard"; $("wizStep").innerHTML = "<p>当前卡片已有数据。向导只开新卡，不覆盖现存角色：请先点「新建空白卡」，再开始向导。</p>"; $("wizBack").style.visibility = "hidden"; $("wizNext").textContent = "关闭 Close"; wiz.step = 99; return; }
+  wiz.data = { ab: {}, race: "", cls: "", strEx: "", hp: "", gold: 0, languages: [], weapons: [], spells: [], name: "", player: "", align: "", sex: "", age: "" };
+  wiz.step = 0; wizShow(); $("wizBg").classList.add("open");
+};
+$("wizNext").onclick = () => { if (wiz.step === 99) { $("wizBg").classList.remove("open"); return; } wizNext(); };
+$("wizBack").onclick = () => { if (wiz.step !== 99) wizBack(); };
+$("wizClose").onclick = () => $("wizBg").classList.remove("open");
+$("wizBg").addEventListener("click", ev => { if (ev.target === $("wizBg")) $("wizBg").classList.remove("open"); });
+
+/* ---------- 启动 ---------- */
+refreshSelect(); fillForm(curChar());
+</script>
+</body>
+</html>
