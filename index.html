@@ -51,8 +51,9 @@
   <div class="subtitle">Advanced Dungeons &amp; Dragons 1st Edition · Character Sheet · 中英对照 · 非官方粉丝作品，与 Wizards of the Coast 无关<br>Unofficial fan project, not affiliated with Wizards of the Coast. 打开即空白卡，数据只存在你的浏览器 localStorage 里。</div>
 
   <div class="hero">
-    <p><b>第一次建卡？不用先填表，点这里一步步来：</b>手动掷实体骰、把骰面填进向导，它会带你走完掷属性 → 种族职业 → 卓越力量 → HP → 起始金币 → 语言 → 武器 → 法术书 → 身份，全程不自动掷骰、不覆盖已有角色。</p>
+    <p><b>第一次建卡？不用先填表，点这里一步步来：</b>手动掷实体骰、把骰面填进向导，它会带你走完掷属性 → 种族职业 → 卓越力量 → HP → 起始金币 → 语言 → 武器 → 法术书 → 身份，全程不覆盖已有角色。赶时间也可以点🎲自动掷骰，直接生成一个随机角色（新开一张卡，不覆盖已有的）。</p>
     <button id="btnWizardTop" class="primary" style="font-size:20px; padding:10px 22px">🧙 开始建卡向导 Start Creation Wizard</button>
+    <button id="btnAutoGen" style="font-size:20px; padding:10px 22px">🎲 自动掷骰生成随机角色 Auto-Roll Character</button>
   </div>
 
   <h2>角色管理 Character</h2>
@@ -198,6 +199,7 @@
     <div class="row" style="margin-top:14px">
       <button id="wizBack">上一步 Back</button>
       <button id="wizNext" class="primary">下一步 Next</button>
+      <button id="btnAutoGenWiz">🎲 自动掷骰生成随机角色</button>
       <button id="wizClose">关闭 Close</button>
     </div>
     <div id="wizErr" class="err"></div>
@@ -552,6 +554,56 @@ $("wizNext").onclick = () => { if (wiz.step === 99) { $("wizBg").classList.remov
 $("wizBack").onclick = () => { if (wiz.step !== 99) wizBack(); };
 $("wizClose").onclick = () => $("wizBg").classList.remove("open");
 $("wizBg").addEventListener("click", ev => { if (ev.target === $("wizBg")) $("wizBg").classList.remove("open"); });
+
+/* ---------- 自动生成随机角色（可选；手动掷骰流程不动，新开一张卡，绝不覆盖已有角色） ---------- */
+const AUTO_RACES = ["人类 Human", "精灵 Elf", "半精灵 Half-Elf", "矮人 Dwarf", "侏儒 Gnome", "半身人 Halfling", "半兽人 Half-Orc"];
+const AUTO_CLASSES = ["fighter", "cleric", "thief", "mu", "illusionist", "paladin", "ranger", "assassin", "monk", "druid", "bard"];
+const AUTO_ALIGNS = ["守序善良 Lawful Good", "中立善良 Neutral Good", "混乱善良 Chaotic Good", "守序中立 Lawful Neutral", "绝对中立 True Neutral", "混乱中立 Chaotic Neutral", "守序邪恶 Lawful Evil", "中立邪恶 Neutral Evil", "混乱邪恶 Chaotic Evil"];
+const AUTO_LANGS = ["精灵语 Elvish", "矮人语 Dwarvish", "侏儒语 Gnomish", "半身人语 Halfling", "半兽人语 Orcish", "龙语 Draconic", "地精语 Goblin", "巨人语 Giant", "豺狼人语 Gnoll", "地底通用语 Undercommon"];
+const AUTO_WEAPONS = {
+  fighter: ["长剑 Long Sword", "战斧 Battle Axe", "长弓 Long Bow", "钉头锤 Footman's Mace", "匕首 Dagger"],
+  paladin: ["长剑 Long Sword", "战斧 Battle Axe", "钉头锤 Footman's Mace", "长枪 Lance"],
+  ranger: ["长剑 Long Sword", "长弓 Long Bow", "匕首 Dagger", "短剑 Short Sword"],
+  cleric: ["钉头锤 Footman's Mace", "木棍 Quarterstaff", "投石索 Sling", "权杖 Club"],
+  druid: ["木棍 Quarterstaff", "投石索 Sling", "飞镖 Dart", "弯刀 Scimitar"],
+  monk: ["木棍 Quarterstaff", "匕首 Dagger", "飞镖 Dart", "徒手 Open Hand"],
+  thief: ["短剑 Short Sword", "匕首 Dagger", "短弓 Short Bow", "飞镖 Dart"],
+  assassin: ["短剑 Short Sword", "匕首 Dagger", "短弓 Short Bow", "弩 Crossbow"],
+  bard: ["短剑 Short Sword", "匕首 Dagger", "短弓 Short Bow", "投石索 Sling"],
+  mu: ["匕首 Dagger", "飞镖 Dart", "木棍 Quarterstaff", "投石索 Sling"],
+  illusionist: ["匕首 Dagger", "飞镖 Dart", "木棍 Quarterstaff", "投石索 Sling"]
+};
+const AUTO_SPELLS_L1 = ["Magic Missile", "Shield", "Sleep", "Charm Person", "Detect Magic", "Identify", "Light", "Protection from Evil", "Feather Fall", "Jump", "Spider Climb", "Unseen Servant"];
+function rInt(n) { return 1 + Math.floor(Math.random() * n); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function roll4d6drop() { const d = [rInt(6), rInt(6), rInt(6), rInt(6)]; d.sort((a, b) => a - b); return d[1] + d[2] + d[3]; }
+function autoGenerate() {
+  const c = blankChar();
+  c.race = pick(AUTO_RACES); c.cls = pick(AUTO_CLASSES); c.align = pick(AUTO_ALIGNS); c.level = 1; c.xp = 0;
+  c.ab = { str: roll4d6drop(), int: roll4d6drop(), wis: roll4d6drop(), dex: roll4d6drop(), con: roll4d6drop(), cha: roll4d6drop(), strEx: "" };
+  if (T.fighterGroup(c.cls) && c.ab.str === 18) c.ab.strEx = rInt(100);
+  const hd = T.hitDie[c.cls] || 6;
+  c.hp = Math.max(1, rInt(hd) + T.conHp(c.ab.con, T.fighterGroup(c.cls))); c.hpmax = c.hp;
+  const spec = T.goldSpec[c.cls] || [3, 6, 10];
+  let g = 0; for (let i = 0; i < spec[0]; i++) g += rInt(spec[1]); c.coins.gp = g * spec[2];
+  const add = Math.max(0, c.ab.int - 11);
+  c.languages = ["通用语", "阵营语"].concat(shuffle(AUTO_LANGS).slice(0, add));
+  const wpPool = AUTO_WEAPONS[c.cls] || ["匕首 Dagger"];
+  const nWp = T.caster(c.cls) ? 1 : 2;
+  c.weapons = shuffle(wpPool).slice(0, nWp).map(name => ({ name: name, prof: true }));
+  if (T.caster(c.cls)) {
+    const rate = T.intLearn(c.ab.int);
+    const spells = [{ name: "Read Magic", lvl: 1, learned: true, mem: false }];
+    if (rate) { for (const name of shuffle(AUTO_SPELLS_L1).slice(0, 4)) spells.push({ name: name, lvl: 1, learned: rInt(100) <= rate[0], mem: false }); }
+    c.spells = spells;
+  }
+  chars.push(c); cur = chars.length - 1;
+  refreshSelect(); fillForm(c); saveAll();
+  logRoll("🎲 已自动生成随机角色：" + c.race + " " + className(c.cls) + "（力量 " + c.ab.str + (c.ab.strEx ? "/" + c.ab.strEx : "") + "、智力 " + c.ab.int + "、感知 " + c.ab.wis + "、敏捷 " + c.ab.dex + "、体质 " + c.ab.con + "、魅力 " + c.ab.cha + "，HP " + c.hp + "，起始金 " + c.coins.gp + " gp）。姓名请自己填；种族职业组合未按 PHB 限制表过滤，以 DM 裁定为准。");
+}
+$("btnAutoGen").onclick = autoGenerate;
+$("btnAutoGenWiz").onclick = () => { $("wizBg").classList.remove("open"); autoGenerate(); };
 
 /* ---------- 启动 ---------- */
 refreshSelect(); fillForm(curChar());
